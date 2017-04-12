@@ -1,5 +1,3 @@
-#Dockerfile for python-opencv
-
 # Pull base image.
 FROM ubuntu:16.04
 
