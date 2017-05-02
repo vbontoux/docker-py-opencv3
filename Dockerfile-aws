@@ -1,0 +1,67 @@
+#Dockerfile for python-opencv
+
+# Pull base image.
+FROM amazonlinux
+
+MAINTAINER  <v.bontoux@free.fr>
+
+# Install packages.
+RUN yum update -y
+RUN yum install -y python27-devel 
+RUN yum install -y python35-devel
+RUN yum install -y build-essential cmake pkg-config
+RUN yum install -y libpng-devel
+RUN yum install -y libjpeg-devel 
+RUN yum install -y libtiff-devel 
+RUN yum install -y libjasper-devel
+RUN yum install -y wget
+RUN yum install -y git cmake gcc-c++ gcc chrpath
+RUN yum install -y nasm yasm libvpx-devel
+
+# Compile libavcodec
+#WORKDIR /tmp/
+#RUN wget http://libav.org/releases/libav-10.1.tar.gz
+#RUN tar -xvzf libav-10.1.tar.gz
+#WORKDIR /tmp/libav-10.1
+#RUN ./configure --extra-cflags=-I/opt/local/include --extra-ldflags=-L/opt/local/lib --enable-gpl --enable-version3  --enable-libvpx
+#RUN make
+#RUN make install
+#WORKDIR /tmp/
+#RUN rm -rf /tmp/libav-10.1
+
+#RUN yum install ffmpeg-devel -y
+#RUN yum install -y libavformat-devel libswscale-devel libv4l-devel
+#RUN yum install -y libatlas-base-devel gfortran
+
+# Compile opencv
+WORKDIR /tmp/
+RUN yum install -y unzip
+RUN wget -O opencv.zip https://github.com/Itseez/opencv/archive/3.1.0.zip
+RUN unzip opencv.zip
+RUN wget -O opencv_contrib.zip https://github.com/Itseez/opencv_contrib/archive/3.1.0.zip
+RUN unzip opencv_contrib.zip
+RUN wget https://bootstrap.pypa.io/get-pip.py
+RUN python get-pip.py
+RUN pip install numpy
+WORKDIR /tmp/opencv-3.1.0/
+RUN mkdir build
+WORKDIR /tmp/opencv-3.1.0/build
+RUN cmake -D CMAKE_BUILD_TYPE=RELEASE \
+    -D CMAKE_INSTALL_PREFIX=/usr/local \
+    -D INSTALL_PYTHON_EXAMPLES=ON \
+    -D INSTALL_C_EXAMPLES=OFF \
+    -D OPENCV_EXTRA_MODULES_PATH=/tmp/opencv_contrib-3.1.0/modules \
+    -D PYTHON_EXECUTABLE=/usr/bin/python \
+    -D WITH_FFMPEG=0\
+    -D BUILD_EXAMPLES=ON ..
+RUN make -j4
+RUN make install
+RUN ldconfig
+RUN pip install matplotlib
+RUN ln -s /usr/local/lib/python2.7/dist-packages/cv2.so /usr/local/lib64/python2.7/site-packages/cv2.so
+#RUN yum install -y python-tk
+# Define working directory.
+WORKDIR /app
+
+# Define default command.
+CMD ["bash"]
