@@ -12,10 +12,12 @@ RUN mkdir -p /tmp/lambda-package/cv2 /tmp/build/numpy
 RUN yum install -y wget
 RUN wget https://bootstrap.pypa.io/get-pip.py
 RUN python get-pip.py
+
+# Install numpy and package it
 RUN pip install --install-option="--prefix=/tmp/build/numpy/" numpy
 RUN cp -rf /tmp/build/numpy/lib64/python2.7/site-packages/numpy /tmp/lambda-package
 
-# Compile opencv
+# Compile opencv package it
 WORKDIR /tmp/
 RUN NUMPY=/tmp/lambda-package/numpy/core/include
 WORKDIR /tmp/build/
@@ -48,3 +50,15 @@ RUN touch /tmp/lambda-package/cv2/__init__.py
 COPY feature-matching-sift.py /tmp/lambda-package/
 COPY photo.png /tmp/lambda-package/
 COPY ref.png /tmp/lambda-package/
+COPY photo.jpg /tmp/lambda-package/
+COPY ref.jpg /tmp/lambda-package/
+WORKDIR /tmp/lambda-package/
+
+
+# Now getting the package as zip
+RUN yum install -y zip
+RUN zip -r ../lambda-package.zip *
+
+# Usage
+# docker build -f /home/vince/dev/docker-py-opencv3/Dockerfile-aws -t docker-py-opencv-aws .
+# docker run -ti docker-py-opencv-aws
