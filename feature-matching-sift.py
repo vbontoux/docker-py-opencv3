@@ -3,13 +3,26 @@ import cv2
 #from matplotlib import pyplot as plt
 import argparse
 import datetime
-
-
+import json
+import urllib
 
 def feature_matching(ref, img):
     start = datetime.datetime.now()
-    img1 = cv2.imread(ref,0)          # queryImage
-    img2 = cv2.imread(img,0)          # queryImage
+
+    print "ref: " + ref
+    print "img: " + img
+    resp_ref = urllib.urlopen(ref)
+    img1 = np.asarray(bytearray(resp_ref.read()), dtype="uint8")
+    img1 = cv2.imdecode(img1, cv2.IMREAD_COLOR)
+    print img1.shape
+
+    resp_img = urllib.urlopen(img)
+    img2 = np.asarray(bytearray(resp_img.read()), dtype="uint8")
+    img2 = cv2.imdecode(img2, cv2.IMREAD_COLOR)
+    print img2.shape
+
+    # img1 = cv2.imread(ref,0)          # queryImage
+    # img2 = cv2.imread(img,0)          # queryImage
 
     # Initiate SIFT detector
     #sift = cv2.SIFT()
@@ -36,15 +49,33 @@ def feature_matching(ref, img):
 
 
 def lambda_handler(event, context):
-    matches, elaps = feature_matching(event["ref"], event["img"])
+    message = json.loads(event['Records'][0]['Sns']['Message'])
+    print message
+    cid = message.get("cid", "")
+    ref_url = "https://s3.eu-west-2.amazonaws.com/th-" + str(cid) + "/ref.jpg"
+    print "ref_url = " + ref_url
+    img_url = message.get("image_url", "")
+    matches, elaps = feature_matching(ref_url, img_url)
     res = { 
         "version": "OpenCV " + cv2.__version__,
-        "message": event["ref"] + " and " + event["img"] + " are matching!",
+        "message": ref_url + " and " + img_url + " are matching!",
         "matches": matches,
         "time": elaps,
         "status": "match"
     }
+    print "Returning : " + str(res)
     return res
+
+# def lambda_handler(event, context):
+#     matches, elaps = feature_matching(event["ref"], event["img"])
+#     res = { 
+#         "version": "OpenCV " + cv2.__version__,
+#         "message": event["ref"] + " and " + event["img"] + " are matching!",
+#         "matches": matches,
+#         "time": elaps,
+#         "status": "match"
+#     }
+#     return res
 
 
 if __name__ == "__main__":
