@@ -5,6 +5,11 @@ import argparse
 import datetime
 import json
 import urllib
+import boto3
+
+sns = boto3.client('sns')
+match_result_arn =  'arn:aws:sns:eu-west-2:458847123929:match-result' #[t["TopicArn"] for t in sns.list_topics()['Topics'] if t["TopicArn"].endswith(':' + 'match-result')][0] 
+
 
 def feature_matching(ref, img):
     start = datetime.datetime.now()
@@ -53,16 +58,28 @@ def lambda_handler(event, context):
     print message
     cid = message.get("cid", "")
     ref_url = "https://s3.eu-west-2.amazonaws.com/th-" + str(cid) + "/ref.jpg"
+    settings_url = "https://s3.eu-west-2.amazonaws.com/th-" + str(cid) + "/settings.json" # to put some settings like the threshold for the number of matching points
     print "ref_url = " + ref_url
     img_url = message.get("image_url", "")
     matches, elaps = feature_matching(ref_url, img_url)
-    res = { 
-        "version": "OpenCV " + cv2.__version__,
-        "message": ref_url + " and " + img_url + " are matching!",
-        "matches": matches,
-        "time": elaps,
-        "status": "match"
+
+    res = {
+        "match_result": {
+            "version": "OpenCV " + cv2.__version__,
+            "matches": matches,
+            "time": elaps,
+            "status": "match" if matches > 100 else "nomatch"
+        },
+        "participation_message": message
     }
+
+    sns.publish(
+        TopicArn=match_result_arn,
+        Message=json.dumps(res),
+        Subject='Feature matching result',
+        MessageStructure="raw"
+    )
+
     print "Returning : " + str(res)
     return res
 
