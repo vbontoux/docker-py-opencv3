@@ -55,21 +55,55 @@ def feature_matching(ref, img, local=False):
 
 
 def lambda_handler(event, context):
-    matches, elaps = feature_matching(event["ref"], event["img"])
-    res = { 
-        "version": "OpenCV " + cv2.__version__,
-        "message": event["ref"] + " and " + event["img"] + " are matching!",
-        "matches": matches,
-        "time": elaps,
-        "status": "match" if matches > 150 else "nomatch"
-    }
-    print "Returning : " + str(res)
-    return res
+    try:
+        body = event.get("body", "")
+        if body:
+            #print 'Received message body:' + str(body)
+            body = json.loads(body)
+        else :
+            return {"errorMessage": "body not found in event", "statusCode": 400}
+        
+        threshold = body.get("thr", 150)
+        if isinstance(threshold, str) or isinstance(threshold, unicode):
+            threshold = int(threshold)
+
+        matches, elaps = feature_matching(body["ref"], body["img"])
+
+        res = { 
+            "version": "OpenCV " + cv2.__version__,
+            "message": "Made a sift matching with ref " + body["ref"] + " and image " + body["img"],
+            "matches": matches,
+            "elaps": elaps,
+            "status": "match" if matches > threshold else "nomatch",
+            "threshold": threshold
+        }
+        print "Returning : " + str(res)
+        response = {
+            'body': json.dumps(res),
+            'statusCode': 200
+        }
+    except Exception as e:
+        res = { 
+            "version": "OpenCV " + cv2.__version__,
+            "message": str(e),
+            "matches": "nomatches",
+            "elaps": elaps,
+            "status": "error",
+            "threshold": threshold
+        }
+        print "Returning : " + str(res)
+        response = {
+            'body': json.dumps(res),
+            'statusCode': 200 # for now fo the client api
+        }
+
+    return response
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Sift sample')
     parser.add_argument('-r','--ref', help='reference image', required=True)
     parser.add_argument('-i','--img', help='imput image', required=True)
+    parser.add_argument('-t','--thr', help='matches threshold', required=False)
     args = vars(parser.parse_args())
-    print lambda_handler(event={"ref": args["ref"], "img": args["img"]}, context=0)
+    print lambda_handler(event={"body": {"ref": args["ref"], "img": args["img"], "thr": args["thr"]}}, context=0)
